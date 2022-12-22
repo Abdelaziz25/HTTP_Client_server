@@ -15,7 +15,7 @@ vector <arg_struct*> Clients_Structs;
 
 
 /*
-this function is used to parse String of command and divide it if it is separted by space;
+this function is used to parse String of command and divide it if it is separted by space
 */
 string Edits(const string& str){
     size_t first = str.find_first_not_of(' ');
@@ -220,25 +220,35 @@ int Client_Post(string fileName,int socketClient,char buffer[4096])
             return 2;
 }
 
-
-
-
-
+//return the file with given name content in string
+string fileContent(string name)
+{
+    string req;
+    string c = "";
+    ifstream f;
+    f.open(name);
+    while(getline(f, req))
+        c += req;
+    return c;
+}
 /*
-Server try to get file if it exists response will be 200 else it will be 404 
+Server trys to get file if it exists response will be 200 else it will be 404 
 */
 void Client_Get( string fileName,int socketClient)
 {
+                // cout << "filename:   " << "fileName";
                 if (CheckExistenceFile(fileName)){
                 string ok = "HTTP/1.1 200 OK\\r\\n \n";
                 char * tab2 = &ok[0];
                 write(socketClient, tab2, strlen(tab2));
-                string content = GetFileContent(fileName);
+                string content = fileContent(fileName);
+                // cout << "\t" << content <<endl;
                 int fileSize = content.size();
                 write(socketClient, &fileSize, sizeof(int));
                 ChunkSend(socketClient, content);
                 } else {
                 string str = "HTTP/1.1 404 Not Found\\r\\n \n";
+                // cout<< "\thhh" << endl;
                 char * tab2 = &str[0];
                 write(socketClient, tab2, strlen(tab2));
                 string content = GetFileContent("not_found.txt");
@@ -247,8 +257,6 @@ void Client_Get( string fileName,int socketClient)
                 ChunkSend(socketClient, content);
                 }
 }
-
-
 
 
 /*

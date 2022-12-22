@@ -12,7 +12,7 @@
 #define IP_ADDRESS "192.168.1.59"
 
 using namespace std;
-//Return vector of all the requests in the file with the name givem
+//Return vector of all the requests in the file with the name give
 vector<string> findReq(string name)
 {
     string req;

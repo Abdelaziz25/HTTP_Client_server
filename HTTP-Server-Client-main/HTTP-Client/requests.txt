@@ -1,1 +1,3 @@
-get ahmed.txt HTTP
+post id.html HTTP
+get id.html HTTP
+post Omar.txt HTTP
