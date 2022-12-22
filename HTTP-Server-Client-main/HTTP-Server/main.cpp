@@ -26,6 +26,10 @@ using namespace std;
 struct arg_struct {int client_socket;long long* timer;};
 vector <arg_struct*> Clients_Structs;
 
+
+/*
+this function is used to parse String of command and divide it if it is separted by space;
+*/
 string Edits(const string& str){
     size_t first = str.find_first_not_of(' ');
     if (string::npos == first)
@@ -33,7 +37,9 @@ string Edits(const string& str){
     size_t last = str.find_last_not_of(' ');
     return str.substr(first, (last - first + 1));
 }
-
+/*
+this function is used to split request as if command is give client_get index.html it pasrse the command line by space
+*/
 vector<string> RequestSplit(string str){
     str = Edits(str);
     vector<string> vec;
@@ -52,6 +58,11 @@ vector<string> RequestSplit(string str){
     return vec;
 }
 
+/*
+this function if File is already Exist or not
+
+*/
+
 bool CheckExistenceFile(string fileName){
     ifstream ifile;
     ifile.open(fileName);
@@ -60,6 +71,11 @@ bool CheckExistenceFile(string fileName){
     else
         return false;
 }
+
+/*
+this function is used to send information of file to socket
+*/
+
 void ChunkSend(int socket , string s) {
     const char *beginner = s.c_str();
     int i=0;
@@ -71,6 +87,10 @@ void ChunkSend(int socket , string s) {
     // for (int i = 0; i < s.length(); i += 500)
     //     send(socket, beginner + i,min(500, (int)s.length() - i), 0);
 }
+
+/*
+this function is used to close connection when its time is out
+*/
 
 void * TimeOutOFClient (void *){
     while (1){
@@ -101,11 +121,18 @@ void * TimeOutOFClient (void *){
     }
 }
 
+/*
+this function is used to save file;
+*/
 void FileSave (string fileName, string content){
     ofstream f_stream(fileName.c_str());
     f_stream.write(content.c_str(), content.length());
 }
 
+
+/*
+ this function get Type of file which is either html or txt  
+*/
 string ContentType(string fileName){
 
      if (fileName.find(".html") != std::string::npos)
@@ -116,6 +143,9 @@ string ContentType(string fileName){
    
 }
 
+/*
+this function is used to read all content of file and save it in string Content 
+*/
 string RequestedFileContent(string fileName){
     string line;
     string content = "";
@@ -126,6 +156,9 @@ string RequestedFileContent(string fileName){
     return content;
 }
 
+/*
+this function is used to get all content of file  
+*/
 string GetFileContent(string fileName){
     ifstream fin(fileName);
     size_t buffer_size = 1024;
@@ -137,7 +170,10 @@ string GetFileContent(string fileName){
     return streamer.str();
 }
 
-void Get(string fileName,int socketClient)
+/*
+the server take the requests and parse it and take filename and its type and printits content
+*/
+void GetFileINformation(string fileName,int socketClient)
 {
             string real = "";
             // for (int i = 1; i < fileName.size() ; i++){real += fileName[i];}
@@ -164,9 +200,14 @@ void Get(string fileName,int socketClient)
                 write(socketClient, tab2, strlen(tab2));
             }
 }
+/*
+
+the server recive file from client and the response will be 200
+*/
+
 int Client_Post(string fileName,int socketClient,char buffer[4096])
 {
-  string str = "HTTP/1.1 200 OK\\r\\n \n";
+            string str = "HTTP/1.1 200 OK\\r\\n \n";
             char * tab2 = &str[0];
             write(socketClient, tab2, strlen(tab2));
             bzero(buffer, 4096);
@@ -181,9 +222,13 @@ int Client_Post(string fileName,int socketClient,char buffer[4096])
             write(socketClient, msg, strlen(msg));
             return 2;
 }
+/*
+Server try to get file if it exists response will be 200 else it will be 404 
+*/
+
 void Client_Get( string fileName,int socketClient)
 {
-   if (CheckExistenceFile(fileName)){
+                if (CheckExistenceFile(fileName)){
                 string ok = "HTTP/1.1 200 OK\\r\\n \n";
                 char * tab2 = &ok[0];
                 write(socketClient, tab2, strlen(tab2));
@@ -191,7 +236,7 @@ void Client_Get( string fileName,int socketClient)
                 int fileSize = content.size();
                 write(socketClient, &fileSize, sizeof(int));
                 ChunkSend(socketClient, content);
-            } else {
+                } else {
                 string str = "HTTP/1.1 404 Not Found\\r\\n \n";
                 char * tab2 = &str[0];
                 write(socketClient, tab2, strlen(tab2));
@@ -199,8 +244,12 @@ void Client_Get( string fileName,int socketClient)
                 int fileSize = content.size();
                 write(socketClient, &fileSize, sizeof(int));
                 ChunkSend(socketClient, content);
-            }
+                }
 }
+
+/*
+parse command line and check whether it is Post or get
+*/
 void * ConnectionOfClient(void* socket_Client)
 {
     string total_buffer = "";
@@ -218,7 +267,6 @@ void * ConnectionOfClient(void* socket_Client)
         buffer[strlen(buffer) - 1] = '\0';
         total_buffer += buffer;
         vector<string> Split = RequestSplit(total_buffer);
-
         if (Split[0] == "get" || Split[0] == "client_get") {
             string fileName = Split[1];
             Client_Get(fileName,socketClient);
@@ -232,7 +280,7 @@ void * ConnectionOfClient(void* socket_Client)
            }
         } else if (Split[0] == "GET") {
             string fileName = Split[1];
-            Get(fileName,socketClient);
+            GetFileINformation(fileName,socketClient);
         } else if (Split[0] == "close") {
             break;
         } else {
@@ -247,6 +295,7 @@ void * ConnectionOfClient(void* socket_Client)
     close(socketClient);
     return NULL;
 }
+
 
 int main(int argc, char const *argv[]){
     if (argc != 2){printf("Not Valid Arguments or Missing Port");exit(EXIT_FAILURE);}
