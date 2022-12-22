@@ -8,169 +8,211 @@
 #include <arpa/inet.h>
 #include <bits/stdc++.h>
 
+#define BUFFER_SIZE 1024
+#define IP_ADDRESS "192.168.1.59"
+
 using namespace std;
-vector<string> getCommands (string fileName);
-vector<string> splitRequest(string str);
-string getPostFileContent(string fileName);
-void saveFile (string fileName, string content);
-
-
-
-int main(int argc, char const *argv[]){
-    if (argc != 3){cout << "ERROR! Invalid inputs" << endl;cout << flush;return -1;}
-    int socket_address = 0;
-    char buffer[1024] = {0};
-    int port_num = atoi(argv[2]);
-    struct sockaddr_in server_address;
-    socket_address = socket(AF_INET, SOCK_STREAM, 0);
-    memset(&server_address, '0', sizeof(server_address));
-    server_address.sin_family = AF_INET;
-    server_address.sin_port = htons(port_num);
-    if (socket_address < 0){cout << endl << " Client Socket creation error " << endl;cout << flush;return -1;}
-    if(inet_pton(AF_INET, "127.0.0.1", &server_address.sin_addr) <= 0){cout << "Address not supported " << endl;cout << flush;return -1;}
-    if (connect(socket_address, (struct sockaddr *)&server_address, sizeof(server_address)) < 0){cout << "Connection Failed" << endl;cout << flush;return -1;}
-    vector<string> commands = getCommands("commands.txt");
-    for (int i = 0; i < commands.size() ; i++){
-        string command = commands[i];
-        vector<string> splits = splitRequest(command);
-        bzero(buffer, 1024);
-        if (splits[0] == "get" || splits[0] == "client_get"){
-            string type = splits[0];
-            char * tempBuffer = &command[0];
-            cout << endl << command << endl;
-            cout << flush;
-            send(socket_address, tempBuffer, strlen(tempBuffer), 0 );
-            read(socket_address, buffer, 1024);
-            cout << buffer << endl;
-            cout << flush;
-            int size;
-            read(socket_address, &size, sizeof(int));
-            cout << "String Size : " << size << endl;
-            cout << flush;
-            string content = "";
-            while (true){
-                char contentBuffer [1024];
-                if (content.size() == size){
-                    break;
-                }
-                long valRead = read(socket_address, contentBuffer, 1024);
-                if (valRead <= 0){
-                    cout << "File Completed";
-                    cout << flush;
-                    break;
-                }
-                content += string(contentBuffer,valRead);
-            }
-            cout << content << endl;
-            cout << flush;
-            saveFile(splits[1] , content);
-        } else if (splits[0] == "post" || splits[0] == "client_post"){
-            string type = splits[0];
-            char * tempBuffer = &command[0];
-            cout << endl <<command << endl;
-            cout << flush;
-            send(socket_address, tempBuffer, strlen(tempBuffer), 0 );
-            read(socket_address, buffer, 1024);
-            cout << buffer << endl;
-            cout << flush;
-            string fileContent = getPostFileContent(splits[1]);
-            char * tempFile = &fileContent[0];
-            cout << fileContent << endl;
-            cout << flush;
-            send(socket_address, tempFile, strlen(tempFile), 0 );
-            bzero(buffer, 1024);
-            read(socket_address, buffer, 1024);
-            cout << buffer << endl;
-        }
-    }
-
-    while (1){
-        fgets(buffer, 1024,stdin);
-        string req = buffer;
-        send(socket_address, buffer, strlen(buffer), 0 );
-        cout << "Buffer Sent" << endl;
-        cout << flush;
-        bzero(buffer, 1024);
-        read(socket_address, buffer, 1024);
-        cout << buffer << endl;
-        cout << flush;
-        bzero(buffer, 1024);
-        vector<string> spl = splitRequest(req);
-        if (spl[0] == "post" || spl[0] == "client_post"){
-            string fileContent = getPostFileContent(spl[1]);
-            char * tempFile = &fileContent[0];
-            cout << fileContent << endl;
-            cout << flush;
-            send(socket_address, tempFile, strlen(tempFile), 0 );
-            read(socket_address, buffer, 1024);
-            cout << buffer << endl;
-            cout << flush;
-            bzero(buffer, 1024);
-        } else if (spl[0] == "get" || spl[0] == "client_get"){
-            int size;
-            read(socket_address, &size, sizeof(int));
-            cout << "String Size : " << size << endl;
-            cout << flush;
-            string content = "";
-            while (true){
-                char contentBuffer [1024];
-                if (content.size() == size){
-                    break;
-                }
-                long valRead = read(socket_address, contentBuffer, 1024);
-                if (valRead <= 0){
-                    cout << "File Completed";
-                    cout << flush;
-                    break;
-                }
-                content += string(contentBuffer,valRead);
-            }
-            cout << content << endl;
-            saveFile(spl[1] , content);
-        }
-    }
-    return 0;
-}
-
-vector<string> getCommands (string fileName){
-    vector<string> commands;
-    string line;
-    string content = "";
+//Return vector of all the requests in the file with the name givem
+vector<string> findReq(string name)
+{
+    string req;
     ifstream f;
-    f.open(fileName);
-    while(getline(f, line))
-        commands.push_back(line);
-    return commands;
+    vector<string> v;
+    f.open(name);
+    while(getline(f, req))
+        v.push_back(req);
+    return v;
 }
 
-vector<string> splitRequest(string str){
-    vector<string> b;
+vector<string> splitor(string str)
+{
+    vector<string> v;
     int count = 0;
     string word = "";
-    for (auto x : str){
-        if (x == ' '){
-            b.push_back(word);
+    for(int i =0; i < str.length(); i++)
+    {
+        if (str[i] == ' ')
+        {
+            v.push_back(word);
             word = "";
             count++;
-            if (count == 2) break;
-        }else {
-            if (x != '/') word = word + x;
+            if (count == 2)
+            { 
+                break;
+            }
+        }
+        else 
+        {
+            if (str[i] != '/')
+            {
+                 word = word + str[i];
+            }
         }
     }
-    return b;
+    return v;
 }
-
-string getPostFileContent(string fileName){
-    string line;
+//return the file with given name content in string
+string getPostFileContent(string name)
+{
+    string req;
     string c = "";
-    ifstream myfile;
-    myfile.open(fileName);
-    while(getline(myfile, line))
-        c += line;
+    ifstream f;
+    f.open(name);
+    while(getline(f, req))
+        c += req;
     return c;
 }
 
-void saveFile (string fileName, string content){
-    ofstream f_stream(fileName.c_str());
+void saveFile (string name, string content)
+{
+    ofstream f_stream(name.c_str());
     f_stream.write(content.c_str(), content.length());
 }
+
+
+
+int main(int argc, char const *argv[])
+{
+    if (argc != 3)
+    {
+        cout << "Enter required inputs" << endl;
+        return 1;
+    }
+    //Initilize socket creation
+    int portNumber = atoi(argv[2]);
+    struct sockaddr_in serverAddr;
+    char buffer[BUFFER_SIZE] = {0};
+    //ipv6 tcp
+    int socAddr = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&serverAddr, '0', sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(portNumber);
+    //Creation failure
+    if (socAddr < 0)
+    {
+        cout << "Socket creation error" << endl;
+        return 2;
+    }
+    if(inet_pton(AF_INET, IP_ADDRESS, &serverAddr.sin_addr) <= 0)
+    {
+        cout << "Address not found" << endl;
+        return 3;
+    }
+    // Fail to connect to server
+    if (connect(socAddr, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
+    {
+        cout << "Connection Failed" << endl;
+        return 4;
+    }
+    //getting vector of all the requests in the file
+    vector<string> req = findReq("requests.txt");
+    for (int i = 0; i < req.size() ; i++)
+    {
+        string request = req[i];
+        vector<string> reqSplits = splitor(request);
+        bzero(buffer, BUFFER_SIZE);
+        string type = reqSplits[0];
+        char * tempBuffer = &request[0];
+        cout << request << endl;
+        //Send and read response from socket
+        send(socAddr, tempBuffer, strlen(tempBuffer), 0);
+        //response result
+        read(socAddr, buffer, BUFFER_SIZE);
+        cout << buffer << endl;
+        if (reqSplits[0] == "get" || reqSplits[0] == "client_get")
+        {
+            int size;
+            //getting file size
+            read(socAddr, &size, sizeof(int));
+            // cout << "\t bbbbbbbb valrea"<<endl;
+            cout << "String Size : " << size << endl;
+            //It is used to save file content coming from server
+            string content = "";
+            // cout << "\t ho valrea"<<endl;
+            while (true)
+            {
+                char contentBuffer[BUFFER_SIZE];
+                //reaching end of file
+                if (content.size() == size)
+                {
+                    break;
+                }
+                // cout << "\tbefore valrea"<<endl;
+                long valRead = read(socAddr, contentBuffer, BUFFER_SIZE);
+                // cout << "\tbefore valrea"<<endl;
+                // cout << "\t" << valRead;
+                if (valRead <= 0)
+                {
+                    cout << "File Completed";
+                    break;
+                }
+                // cout<< "Akromvic" <<endl;
+                content += string(contentBuffer,valRead);
+            }
+            // cout <<endl<< "fgkjgbg"<<endl;
+            cout << content << endl;
+            saveFile(reqSplits[1] , content);
+        } 
+        else if (reqSplits[0] == "post" || reqSplits[0] == "client_post")
+        {
+            //put the file content in string
+            string fileContent = getPostFileContent(reqSplits[1]);
+            char * tempFile = &fileContent[0];
+            bzero(buffer, BUFFER_SIZE);
+            cout << fileContent << endl;
+            //Sending the file to server
+            send(socAddr, tempFile, strlen(tempFile), 0);
+            //getting response from server
+            read(socAddr, buffer, BUFFER_SIZE);
+            cout << buffer << endl;
+        }
+    }
+
+    // while (1){
+    //     fgets(buffer, BUFFER_SIZE,stdin);
+    //     string req = buffer;
+    //     send(socAddr, buffer, strlen(buffer), 0 );
+    //     cout << "Buffer Sent" << endl;
+    //     cout << flush;
+    //     bzero(buffer, BUFFER_SIZE);
+    //     read(socAddr, buffer, BUFFER_SIZE);
+    //     cout << buffer << endl;
+    //     cout << flush;
+    //     bzero(buffer, BUFFER_SIZE);
+    //     vector<string> spl = splitor(req);
+    //     if (spl[0] == "post" || spl[0] == "client_post"){
+    //         string fileContent = getPostFileContent(spl[1]);
+    //         char * tempFile = &fileContent[0];
+    //         cout << fileContent << endl;
+    //         cout << flush;
+    //         send(socAddr, tempFile, strlen(tempFile), 0 );
+    //         read(socAddr, buffer, BUFFER_SIZE);
+    //         cout << buffer << endl;
+    //         cout << flush;
+    //         bzero(buffer, BUFFER_SIZE);
+    //     } else if (spl[0] == "get" || spl[0] == "client_get"){
+    //         int size;
+    //         read(socAddr, &size, sizeof(int));
+    //         cout << "String Size : " << size << endl;
+    //         cout << flush;
+    //         string content = "";
+    //         while (true){
+    //             char contentBuffer [BUFFER_SIZE];
+    //             if (content.size() == size){
+    //                 break;
+    //             }
+    //             long valRead = read(socAddr, contentBuffer, BUFFER_SIZE);
+    //             if (valRead <= 0){
+    //                 cout << "File Completed";
+    //                 cout << flush;
+    //                 break;
+    //             }
+    //             content += string(contentBuffer,valRead);
+    //         }
+    //         cout << content << endl;
+    //         saveFile(spl[1] , content);
+    //     }
+    // }
+    return 0;
+}
+
