@@ -8,23 +8,10 @@
 #include <pthread.h>
 #include <string>
 #include <bits/stdc++.h>
-
 using namespace std;
-
-// string OK_RESPOND = "HTTP/1.1 200 OK\\r\\n \n";
-// string NOT_FOUND_RESPOND = "HTTP/1.1 404 Not Found\\r\\n \n";
-// void * clientConnection(void* P_socketClient);
-// void * clientTimeOut (void *);
-// void sendChunks(int socket , string s);
-// string readFileContent(string photoName);
-// string getContentType(string fname);
-// string getRequestedFileContent(string fileName);
-// void saveFile (string fileName, string content);
-// bool checkFileExist(string fileName);
-// string trim(const string& str);
-// vector<string> splitRequest(string str);
 struct arg_struct {int client_socket;long long* timer;};
 vector <arg_struct*> Clients_Structs;
+
 
 
 /*
@@ -37,6 +24,10 @@ string Edits(const string& str){
     size_t last = str.find_last_not_of(' ');
     return str.substr(first, (last - first + 1));
 }
+
+
+
+
 /*
 this function is used to split request as if command is give client_get index.html it pasrse the command line by space
 */
@@ -58,11 +49,12 @@ vector<string> RequestSplit(string str){
     return vec;
 }
 
+
+
+
 /*
 this function if File is already Exist or not
-
 */
-
 bool CheckExistenceFile(string fileName){
     ifstream ifile;
     ifile.open(fileName);
@@ -72,10 +64,12 @@ bool CheckExistenceFile(string fileName){
         return false;
 }
 
+
+
+
 /*
 this function is used to send information of file to socket
 */
-
 void ChunkSend(int socket , string s) {
     const char *beginner = s.c_str();
     int i=0;
@@ -84,17 +78,15 @@ void ChunkSend(int socket , string s) {
         send(socket, beginner + i,min(500, (int)s.length() - i), 0);
         i+=500;
     }
-    // for (int i = 0; i < s.length(); i += 500)
-    //     send(socket, beginner + i,min(500, (int)s.length() - i), 0);
 }
+
+
 
 /*
 this function is used to close connection when its time is out
 */
-
 void * TimeOutOFClient (void *){
     while (1){
-
         int i=0;
         while(i < Clients_Structs.size())
         {
@@ -103,23 +95,16 @@ void * TimeOutOFClient (void *){
                 close((Clients_Structs[i]->client_socket));
                 Clients_Structs.erase(Clients_Structs.begin()+i);
                 i--;
-                cout << "A Client Connection Is Closed" << endl;
+                cout << "A client connection closed" << endl;
             }
             i++;
         }
-
-        // for (int i = 0; i < Clients_Structs.size() ; i++){
-        //     long long interval = clock() - *(Clients_Structs[i]->timer);
-        //     if (interval >= 1e4){
-        //         close((Clients_Structs[i]->client_socket));
-        //         Clients_Structs.erase(Clients_Structs.begin()+i);
-        //         i--;
-        //         cout << "A Client Connection Is Closed" << endl;
-        //     }
-        // }
         sleep(1);
     }
 }
+
+
+
 
 /*
 this function is used to save file;
@@ -128,6 +113,8 @@ void FileSave (string fileName, string content){
     ofstream f_stream(fileName.c_str());
     f_stream.write(content.c_str(), content.length());
 }
+
+
 
 
 /*
@@ -143,6 +130,8 @@ string ContentType(string fileName){
    
 }
 
+
+
 /*
 this function is used to read all content of file and save it in string Content 
 */
@@ -155,6 +144,9 @@ string RequestedFileContent(string fileName){
         content += line;
     return content;
 }
+
+
+
 
 /*
 this function is used to get all content of file  
@@ -169,6 +161,9 @@ string GetFileContent(string fileName){
         streamer.write(buffer, len);
     return streamer.str();
 }
+
+
+
 
 /*
 the server take the requests and parse it and take filename and its type and printits content
@@ -200,11 +195,13 @@ void GetFileINformation(string fileName,int socketClient)
                 write(socketClient, tab2, strlen(tab2));
             }
 }
-/*
 
+
+
+
+/*
 the server recive file from client and the response will be 200
 */
-
 int Client_Post(string fileName,int socketClient,char buffer[4096])
 {
             string str = "HTTP/1.1 200 OK\\r\\n \n";
@@ -222,10 +219,14 @@ int Client_Post(string fileName,int socketClient,char buffer[4096])
             write(socketClient, msg, strlen(msg));
             return 2;
 }
+
+
+
+
+
 /*
 Server try to get file if it exists response will be 200 else it will be 404 
 */
-
 void Client_Get( string fileName,int socketClient)
 {
                 if (CheckExistenceFile(fileName)){
@@ -246,6 +247,9 @@ void Client_Get( string fileName,int socketClient)
                 ChunkSend(socketClient, content);
                 }
 }
+
+
+
 
 /*
 parse command line and check whether it is Post or get
@@ -297,10 +301,18 @@ void * ConnectionOfClient(void* socket_Client)
 }
 
 
+
+/*
+
+After creating socket we use bind as the bind connect between the socket and serecer_address and portNum
+and listen is used to make server listen to requests come to it;
+and then we use accept to execute this requests;
+*/
+
 int main(int argc, char const *argv[]){
     if (argc != 2){printf("Not Valid Arguments or Missing Port");exit(EXIT_FAILURE);}
-    int server_address;
-    server_address = socket(AF_INET, SOCK_STREAM, 0);
+    int serverSocket;
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     int portNum;
     struct sockaddr_in Newaddress;
     portNum = atoi(argv[1]);
@@ -309,10 +321,10 @@ int main(int argc, char const *argv[]){
     Newaddress.sin_port = htons(portNum);
     memset(Newaddress.sin_zero, '\0', sizeof Newaddress.sin_zero);
     int addresslength = sizeof(Newaddress);
-    if (server_address < 0){printf("error creating Server Socket");exit(EXIT_FAILURE);}
-    int bind_status = bind(server_address, (struct sockaddr *)&Newaddress, sizeof(Newaddress));
+    if (serverSocket < 0){printf("error creating Server Socket");exit(EXIT_FAILURE);}
+    int bind_status = bind(serverSocket, (struct sockaddr *)&Newaddress, sizeof(Newaddress));
     if (bind_status < 0){printf("error binding server");exit(EXIT_FAILURE);}
-    int listen_status = listen(server_address, 10) ;
+    int listen_status = listen(serverSocket, 10) ;
     if (listen_status < 0){printf("error in listening");exit(EXIT_FAILURE);}
     pthread_t timeout;
     int socket;
@@ -320,7 +332,7 @@ int main(int argc, char const *argv[]){
     while(1){
         cout << "Connecting!!!" << endl;
         cout << flush;
-        if ((socket = accept(server_address, (struct sockaddr *)&Newaddress, (socklen_t*)&addresslength)) < 0){
+        if ((socket = accept(serverSocket, (struct sockaddr *)&Newaddress, (socklen_t*)&addresslength)) < 0){
             printf("error in connection");
             exit(EXIT_FAILURE);
         }
